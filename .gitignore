@@ -1,6 +1,12 @@
 .venv/
 __pycache__/
 *.pyc
-submission.csv
+
+# Kaggle data + outputs
 train.csv
 test.csv
+gender_submission.csv
+submission.csv
+
+# Editor
+*.code-workspace
