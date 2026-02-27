@@ -5,9 +5,9 @@
 This project predicts whether a passenger survived the Titanic disaster
 using machine learning.
 
-The goal of this project is to build a **clean, reproducible ML
-workflow** while incrementally improving performance through controlled
-experimentation.
+The focus of this repository is to build the model **iteratively**,
+documenting each experiment, measuring validation performance, and
+improving the pipeline step by step.
 
 ------------------------------------------------------------------------
 
@@ -15,8 +15,11 @@ experimentation.
 
     titanic-ml/
     │
+    ├── notebooks/
+    │   └── eda.ipynb        # Exploratory data analysis and visualizations
+    │
     ├── src/
-    │   └── train.py        # Model training + validation + submission generation
+    │   └── train.py         # Model training + validation + submission generation
     │
     ├── README.md
     └── .gitignore
@@ -34,51 +37,61 @@ Dataset: Kaggle Titanic Competition
 
 ------------------------------------------------------------------------
 
-## ⚙️ Current ML Pipeline
+# ✅ Implementation Progress
 
-### Model
+## ✔ Completed
 
--   `RandomForestClassifier`
-    -   `n_estimators=100`
-    -   `max_depth=5`
-    -   `random_state=1`
-
-### Preprocessing
-
--   **Age** → Median imputation (computed from training data)
--   **Embarked** → Mode imputation (computed from training data)
--   One-hot encoding for categorical variables (`Sex`, `Embarked`)
-
-### Features Used
-
--   `Pclass`
--   `Sex`
--   `Age`
--   `SibSp`
--   `Parch`
--   `Embarked`
+-   Baseline RandomForest model
+-   80/20 train--validation split (stratified)
+-   Median imputation for `Age`
+-   Mode imputation for `Embarked`
+-   One-hot encoding for categorical variables
+-   Validation accuracy tracking
+-   Separation of EDA (notebook) and training script (src/)
 
 ------------------------------------------------------------------------
 
-## 📊 Validation Strategy
+# 📊 Experiments & Results
 
--   80/20 Train--Validation Split
--   Stratified sampling (`stratify=y`) to preserve survival ratio
--   Metric: **Accuracy**
+## Experiment 1 --- Baseline Model
+
+**Features:** `Pclass`, `Sex`, `SibSp`, `Parch`\
+**Validation Accuracy:** \~0.821
+
+## Experiment 2 --- Add Age
+
+Added median-imputed `Age` feature.\
+**Validation Accuracy:** \~0.832
+
+## Experiment 3 --- Add Embarked
+
+Added mode-imputed `Embarked` feature.\
+**Validation Accuracy:** \~0.838
 
 ------------------------------------------------------------------------
 
-## 📈 Results (Validation Accuracy)
+# 📌 Current Model Snapshot
 
-  Experiment    Features                           Accuracy
-  ------------- ---------------------------------- ----------
-  Baseline      Pclass, Sex, SibSp, Parch          \~0.821
-  \+ Age        Added Age (median imputation)      \~0.832
-  \+ Embarked   Added Embarked (mode imputation)   \~0.838
+Model: `RandomForestClassifier`\
+- `n_estimators = 100`\
+- `max_depth = 5`\
+- `random_state = 1`
+
+**Current Validation Accuracy: 0.838**
 
 ------------------------------------------------------------------------
 
-## 🚀 How to Run
+# 🔍 Key Findings from EDA
+
+-   Survival rate is significantly higher for females (\~74%) than males
+    (\~19%).
+-   Passenger class strongly correlates with survival.
+-   Age shows moderate signal (children more likely to survive).
+-   Socioeconomic indicators (Pclass, Fare) appear important.
+
+------------------------------------------------------------------------
+
+# 🚀 How to Run
 
 1.  Download the Titanic dataset from Kaggle.
 2.  Place `train.csv` and `test.csv` in the project root.
@@ -92,29 +105,14 @@ This will: - Print validation accuracy - Generate `submission.csv`
 
 ------------------------------------------------------------------------
 
-## 🎯 Learning Focus
+# 🔜 Next Steps
 
-This project emphasizes:
-
--   Proper validation and generalization
--   Avoiding data leakage
--   Incremental feature experimentation
--   Clean repository structure
--   Reproducibility
-
-------------------------------------------------------------------------
-
-## 🔮 Planned Improvements
-
--   Add `Fare` and feature engineering (FamilySize, IsAlone, Title
-    extraction)
--   Replace manual preprocessing with `Pipeline` + `ColumnTransformer`
+-   Add `Fare` feature
+-   Implement `Pipeline` + `ColumnTransformer`
 -   Add cross-validation
--   Hyperparameter tuning
--   Feature importance visualization
--   Error analysis
+-   Analyze feature importance
+-   Perform structured error analysis
 
 ------------------------------------------------------------------------
 
-> This project is part of a structured learning path in applied machine
-> learning.
+> This README will be updated incrementally as the project evolves.
