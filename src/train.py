@@ -1,163 +1,208 @@
-# Import pandas for working with tabular data (DataFrames)
 import pandas as pd
 
-# Import RandomForestClassifier (ensemble tree-based classification model)
-from sklearn.ensemble import RandomForestClassifier
+# Tools for cross-validation
+from sklearn.model_selection import cross_val_score, StratifiedKFold
 
-# Used to split dataset into training and validation sets
-from sklearn.model_selection import train_test_split
+# Tools for building a machine learning pipeline
+from sklearn.pipeline import Pipeline
+from sklearn.compose import ColumnTransformer
 
-# Used to evaluate how accurate the model predictions are
-from sklearn.metrics import accuracy_score
+# Tools for preprocessing data
+from sklearn.impute import SimpleImputer
+from sklearn.preprocessing import OneHotEncoder
+
+# Models we want to compare
+from sklearn.linear_model import LogisticRegression
+from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
 
 
-# --------------------------------------------------
-# LOAD DATA
-# --------------------------------------------------
+# -------------------------------------------------------
+# 1. LOAD THE DATA
+# -------------------------------------------------------
 
-# Load the training dataset.
-# This contains both features and the target column "Survived".
+# Read the Titanic datasets
 train = pd.read_csv("train.csv")
-
-# Load the test dataset.
-# This does NOT contain the target column (Survived).
-# We will generate predictions for this dataset.
 test = pd.read_csv("test.csv")
 
 
-# --------------------------------------------------
-# DEFINE TARGET VARIABLE
-# --------------------------------------------------
+# -------------------------------------------------------
+# 2. CREATE NEW FEATURES
+# -------------------------------------------------------
 
-# The target variable is what we want to predict.
-# Survived = 1 (passenger survived)
-# Survived = 0 (passenger did not survive)
+# FamilySize counts how many family members are traveling together
+# +1 includes the passenger themselves
+train["FamilySize"] = train["SibSp"] + train["Parch"] + 1
+test["FamilySize"] = test["SibSp"] + test["Parch"] + 1
+
+# IsAlone is 1 if the passenger is traveling alone, otherwise 0
+train["IsAlone"] = (train["FamilySize"] == 1).astype(int)
+test["IsAlone"] = (test["FamilySize"] == 1).astype(int)
+
+
+# -------------------------------------------------------
+# 3. DEFINE TARGET AND FEATURES
+# -------------------------------------------------------
+
+# The target is what we want to predict
 y = train["Survived"]
 
+# These are the columns we will use as input features
+features = ["Pclass", "Sex", "Age", "Fare", "FamilySize", "IsAlone"]
 
-# --------------------------------------------------
-# HANDLE MISSING VALUES (Age)
-# --------------------------------------------------
+# Training features
+X = train[features]
 
-# Many passengers have missing Age values.
-# Machine learning models cannot handle NaN values directly.
-# We compute the median Age from the training data.
-age_median = train["Age"].median()
-
-# Replace missing Age values in training data with the median.
-train["Age"] = train["Age"].fillna(age_median)
-
-# IMPORTANT:
-# We use the training median to fill test data as well.
-# This prevents data leakage (we do not compute statistics from test data).
-test["Age"] = test["Age"].fillna(age_median)
+# Test features (Kaggle test set)
+X_test = test[features]
 
 
-# --------------------------------------------------
-# SELECT FEATURES
-# --------------------------------------------------
+# -------------------------------------------------------
+# 4. DEFINE FEATURE TYPES
+# -------------------------------------------------------
 
-# Define which columns we want to use as model inputs.
-# These were chosen based on EDA and domain understanding.
-features = ["Pclass", "Sex", "Age", "SibSp", "Parch"]
+# Numeric columns contain numbers
+numeric_features = ["Pclass", "Age", "Fare", "FamilySize", "IsAlone"]
 
-# Extract selected feature columns from training data.
-# pd.get_dummies converts categorical columns (like "Sex")
-# into numeric columns using one-hot encoding.
-X = pd.get_dummies(train[features])
-
-# Apply the same transformation to the test data.
-X_test = pd.get_dummies(test[features])
+# Categorical columns contain categories or labels
+categorical_features = ["Sex"]
 
 
-# --------------------------------------------------
-# ENSURE TRAIN AND TEST HAVE SAME COLUMNS
-# --------------------------------------------------
+# -------------------------------------------------------
+# 5. DEFINE PREPROCESSING FOR NUMERIC DATA
+# -------------------------------------------------------
 
-# Sometimes a category may appear in training but not in test
-# (or vice versa). This can cause mismatched columns.
-# Reindex ensures test data has the exact same columns as training.
-# Any missing columns are filled with 0.
-X_test = X_test.reindex(columns=X.columns, fill_value=0)
-
-
-# --------------------------------------------------
-# DEFINE MODEL
-# --------------------------------------------------
-
-# Create the Random Forest classifier.
-# n_estimators = number of trees in the forest.
-# max_depth = maximum depth of each tree (controls complexity).
-# random_state = ensures reproducible results.
-model = RandomForestClassifier(
-    n_estimators=100,
-    max_depth=5,
-    random_state=1
+# For numeric columns, replace missing values with the median
+numeric_transformer = Pipeline(
+    steps=[
+        ("imputer", SimpleImputer(strategy="median"))
+    ]
 )
 
 
-# --------------------------------------------------
-# TRAIN / VALIDATION SPLIT
-# --------------------------------------------------
+# -------------------------------------------------------
+# 6. DEFINE PREPROCESSING FOR CATEGORICAL DATA
+# -------------------------------------------------------
 
-# Split the dataset into:
-# 80% training data
-# 20% validation data
-# stratify=y ensures the survival ratio remains balanced in both sets.
-X_train, X_val, y_train, y_val = train_test_split(
-    X,
-    y,
-    test_size=0.2,
-    random_state=1,
-    stratify=y
+# For categorical columns, convert categories into numbers
+categorical_transformer = Pipeline(
+    steps=[
+        ("encoder", OneHotEncoder(handle_unknown="ignore"))
+    ]
 )
 
 
-# --------------------------------------------------
-# TRAIN MODEL
-# --------------------------------------------------
+# -------------------------------------------------------
+# 7. COMBINE PREPROCESSING STEPS
+# -------------------------------------------------------
 
-# Fit the model using only the training portion.
-model.fit(X_train, y_train)
-
-
-# --------------------------------------------------
-# VALIDATE MODEL
-# --------------------------------------------------
-
-# Predict survival on validation data (which the model has never seen).
-val_predictions = model.predict(X_val)
-
-# Measure how accurate predictions are.
-val_accuracy = accuracy_score(y_val, val_predictions)
-
-print("Validation Accuracy:", val_accuracy)
+# Apply numeric preprocessing to numeric columns
+# and categorical preprocessing to categorical columns
+preprocessor = ColumnTransformer(
+    transformers=[
+        ("num", numeric_transformer, numeric_features),
+        ("cat", categorical_transformer, categorical_features),
+    ]
+)
 
 
-# --------------------------------------------------
-# FINAL TRAINING FOR KAGGLE SUBMISSION
-# --------------------------------------------------
+# -------------------------------------------------------
+# 8. DEFINE THE MODELS WE WANT TO COMPARE
+# -------------------------------------------------------
 
-# After validation, retrain the model on the full training dataset
-# so it can learn from all available labeled data.
-model.fit(X, y)
+# We will test three different models using the same preprocessing
+models = {
+    "Logistic Regression": LogisticRegression(max_iter=1000, random_state=1),
+    "Random Forest": RandomForestClassifier(
+        n_estimators=100,
+        max_depth=5,
+        random_state=1
+    ),
+    "Gradient Boosting": GradientBoostingClassifier(random_state=1)
+}
 
-# Generate predictions for the Kaggle test dataset.
-predictions = model.predict(X_test)
+
+# -------------------------------------------------------
+# 9. DEFINE CROSS-VALIDATION STRATEGY
+# -------------------------------------------------------
+
+# StratifiedKFold keeps the same class balance in each fold
+cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=1)
 
 
-# --------------------------------------------------
-# CREATE SUBMISSION FILE
-# --------------------------------------------------
+# -------------------------------------------------------
+# 10. EVALUATE EACH MODEL WITH CROSS-VALIDATION
+# -------------------------------------------------------
 
-# Kaggle requires a CSV file with exactly two columns:
-# PassengerId and Survived.
-output = pd.DataFrame({
-    "PassengerId": test.PassengerId,
-    "Survived": predictions
+results = {}
+
+for name, model in models.items():
+    # Build a full pipeline for this model
+    pipeline = Pipeline(
+        steps=[
+            ("preprocessor", preprocessor),
+            ("model", model),
+        ]
+    )
+
+    # Run cross-validation
+    scores = cross_val_score(
+        pipeline,
+        X,
+        y,
+        cv=cv,
+        scoring="accuracy"
+    )
+
+    # Save the average score
+    results[name] = scores.mean()
+
+    # Print detailed results
+    print(f"{name} fold scores: {scores}")
+    print(f"{name} mean CV accuracy: {scores.mean():.4f}")
+    print("-" * 50)
+
+
+# -------------------------------------------------------
+# 11. CHOOSE THE BEST MODEL
+# -------------------------------------------------------
+
+best_model_name = max(results, key=results.get)
+best_model = models[best_model_name]
+
+print(f"Best model: {best_model_name}")
+print(f"Best mean CV accuracy: {results[best_model_name]:.4f}")
+
+
+# -------------------------------------------------------
+# 12. TRAIN THE BEST MODEL ON ALL TRAINING DATA
+# -------------------------------------------------------
+
+best_pipeline = Pipeline(
+    steps=[
+        ("preprocessor", preprocessor),
+        ("model", best_model),
+    ]
+)
+
+best_pipeline.fit(X, y)
+
+
+# -------------------------------------------------------
+# 13. MAKE PREDICTIONS FOR KAGGLE TEST SET
+# -------------------------------------------------------
+
+test_preds = best_pipeline.predict(X_test)
+
+
+# -------------------------------------------------------
+# 14. CREATE KAGGLE SUBMISSION FILE
+# -------------------------------------------------------
+
+submission = pd.DataFrame({
+    "PassengerId": test["PassengerId"],
+    "Survived": test_preds
 })
 
-# Save predictions to submission.csv
-output.to_csv("submission.csv", index=False)
+submission.to_csv("submission.csv", index=False)
 
-print("Saved submission.csv")
+print("submission.csv created successfully.")

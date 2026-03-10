@@ -81,6 +81,10 @@ Model: `RandomForestClassifier`\
 
 ------------------------------------------------------------------------
 
+## 📊 Feature Importance
+
+![Feature Importance](images/feature_importance.png)
+
 # 🔍 Key Findings from EDA
 
 -   Survival rate is significantly higher for females (\~74%) than males
@@ -101,18 +105,3 @@ Model: `RandomForestClassifier`\
 python src/train.py
 ```
 
-This will: - Print validation accuracy - Generate `submission.csv`
-
-------------------------------------------------------------------------
-
-# 🔜 Next Steps
-
--   Add `Fare` feature
--   Implement `Pipeline` + `ColumnTransformer`
--   Add cross-validation
--   Analyze feature importance
--   Perform structured error analysis
-
-------------------------------------------------------------------------
-
-> This README will be updated incrementally as the project evolves.
