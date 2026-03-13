@@ -1,4 +1,5 @@
 import pandas as pd
+import matplotlib.pyplot as plt
 
 # Tools for cross-validation
 from sklearn.model_selection import cross_val_score, StratifiedKFold
@@ -225,16 +226,58 @@ best_pipeline = Pipeline(
 
 best_pipeline.fit(X, y)
 
+from sklearn.inspection import permutation_importance
 
 # -------------------------------------------------------
-# 13. MAKE PREDICTIONS FOR KAGGLE TEST SET
+# 13. PERMUTATION FEATURE IMPORTANCE
+# -------------------------------------------------------
+
+# Measure how much each feature affects model accuracy
+result = permutation_importance(
+    best_pipeline,
+    X,
+    y,
+    n_repeats=10,
+    random_state=1,
+    scoring="accuracy"
+)
+
+# Create a sorted list of feature importances
+importance = pd.Series(result.importances_mean, index=X.columns)
+importance = importance.sort_values(ascending=False)
+
+print("\nPermutation Feature Importance:")
+print(importance)
+
+# -------------------------------------------------------
+# 14. VISUALIZE FEATURE IMPORTANCE
+# -------------------------------------------------------
+
+# Create a horizontal bar plot
+plt.figure(figsize=(8, 5))
+importance.plot(kind="barh")
+
+# Labels and title
+plt.title("Permutation Feature Importance")
+plt.xlabel("Accuracy Decrease When Feature Is Shuffled")
+plt.ylabel("Feature")
+
+# Make the most important feature appear on top
+plt.gca().invert_yaxis()
+
+plt.tight_layout()
+plt.show()
+
+
+# -------------------------------------------------------
+# 15. MAKE PREDICTIONS FOR KAGGLE TEST SET
 # -------------------------------------------------------
 
 test_preds = best_pipeline.predict(X_test)
 
 
 # -------------------------------------------------------
-# 14. CREATE KAGGLE SUBMISSION FILE
+# 16. CREATE KAGGLE SUBMISSION FILE
 # -------------------------------------------------------
 
 submission = pd.DataFrame({
