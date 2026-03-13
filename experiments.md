@@ -96,9 +96,28 @@ This file tracks the main experiments, feature changes, and model results during
 
 ---
 
-## Next planned experiment
+## Experiment 3 — Feature Importance Analysis
 
-### Planned work
-- Add permutation feature importance
-- Understand which features the model relies on most
-- Use results to decide whether all current features are useful
+### Goal
+Understand which features the model relies on most.
+
+### Method
+Used permutation feature importance on the trained model.
+
+### Results
+Feature importance (accuracy drop when shuffled):
+
+Title         0.203  
+Pclass        0.093  
+Fare          0.069  
+Age           0.043  
+FamilySize    0.028  
+Sex           0.011  
+Embarked      0.003  
+IsAlone      -0.0003  
+
+### Observations
+- **Title** is by far the most important feature.
+- **Pclass** and **Fare** are also strong predictors.
+- **Sex** importance decreased because **Title already encodes gender information**.
+- **IsAlone** contributes almost no signal.
