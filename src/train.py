@@ -38,6 +38,33 @@ test["FamilySize"] = test["SibSp"] + test["Parch"] + 1
 train["IsAlone"] = (train["FamilySize"] == 1).astype(int)
 test["IsAlone"] = (test["FamilySize"] == 1).astype(int)
 
+# Extract title from passenger names
+# Example: "Braund, Mr. Owen Harris" -> "Mr"
+train["Title"] = train["Name"].str.extract(r",\s*([^\.]+)\.")
+test["Title"] = test["Name"].str.extract(r",\s*([^\.]+)\.")
+
+# Group uncommon titles into one category to reduce noise
+rare_titles = [
+    "Lady", "Countess", "Capt", "Col", "Don", "Dr",
+    "Major", "Rev", "Sir", "Jonkheer", "Dona"
+]
+
+train["Title"] = train["Title"].replace(rare_titles, "Rare")
+test["Title"] = test["Title"].replace(rare_titles, "Rare")
+
+# Normalize equivalent titles into the same category
+train["Title"] = train["Title"].replace({
+    "Mlle": "Miss",
+    "Ms": "Miss",
+    "Mme": "Mrs"
+})
+
+test["Title"] = test["Title"].replace({
+    "Mlle": "Miss",
+    "Ms": "Miss",
+    "Mme": "Mrs"
+})
+
 
 # -------------------------------------------------------
 # 3. DEFINE TARGET AND FEATURES
@@ -47,7 +74,16 @@ test["IsAlone"] = (test["FamilySize"] == 1).astype(int)
 y = train["Survived"]
 
 # These are the columns we will use as input features
-features = ["Pclass", "Sex", "Age", "Fare", "FamilySize", "IsAlone"]
+features = [
+    "Pclass",
+    "Sex",
+    "Age",
+    "Fare",
+    "Embarked",
+    "Title",
+    "FamilySize",
+    "IsAlone"
+]
 
 # Training features
 X = train[features]
@@ -64,7 +100,7 @@ X_test = test[features]
 numeric_features = ["Pclass", "Age", "Fare", "FamilySize", "IsAlone"]
 
 # Categorical columns contain categories or labels
-categorical_features = ["Sex"]
+categorical_features = ["Sex", "Embarked", "Title"]
 
 
 # -------------------------------------------------------
@@ -83,9 +119,12 @@ numeric_transformer = Pipeline(
 # 6. DEFINE PREPROCESSING FOR CATEGORICAL DATA
 # -------------------------------------------------------
 
-# For categorical columns, convert categories into numbers
+# For categorical columns:
+# 1. Fill missing values with the most common value
+# 2. Convert categories into numbers
 categorical_transformer = Pipeline(
     steps=[
+        ("imputer", SimpleImputer(strategy="most_frequent")),
         ("encoder", OneHotEncoder(handle_unknown="ignore"))
     ]
 )
